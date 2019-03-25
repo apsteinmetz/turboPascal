@@ -1,0 +1,39 @@
+
+uses dos;
+var
+  ch : char;
+  regs : registers;
+
+function ComAvail : BOOLEAN;
+var
+  regs: registers;
+
+begin
+  regs.ah := $03;
+  regs.dx := 0;
+  intr($14,regs);
+  ComAvail := ((regs.ah AND 1) = 1)
+end {ComAvail};
+
+{main}
+begin
+  Regs.ax := $5A;
+  regs.dx := 0;
+  Intr($14,regs);
+  REPEAT
+    IF ComAvail THEN
+    BEGIN
+      Read(AUX,ch);
+      IF ch <> #0 THEN Write(ch);
+      ch := #0;
+    END
+    ELSE IF KeyPressed THEN
+    BEGIN
+      Read(KBD,ch);
+      Write(AUX,ch);
+      IF ch = ^M THEN writeln;
+    END;
+  UNTIL ch = #26;
+END.
+
+

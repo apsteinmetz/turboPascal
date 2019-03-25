@@ -1,0 +1,9 @@
+; von Koch Snowflake.  Use a three sided initiator
+; relative length of replaced segment
+3
+; turtle turn angles for generator
+0
+-60
+120
+60
+

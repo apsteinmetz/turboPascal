@@ -1,0 +1,168 @@
+PROGRAM TICKSUM;
+
+{No math routines but this uses IEEE number formats}
+{$N+,E+}
+
+{$DEFINE Paradox}
+
+uses BTRIEVE, AFSTRADE, Crt, StrUtil;
+
+
+CONST
+  AvoidAcct = '_CURR';
+  CashCusips = '999999CSH 999999ACR 999999DEP 999999WDR';
+
+  CurrFileName = 'h:\apps\afstrade\currlots.btr';
+  CusipFileName ='h:\apps\afstrade\cusip290.btr';
+  TransFileName ='h:\apps\afstrade\transfil.btr';
+
+VAR
+  Cusip   : CusipFile;
+  Holding : HoldingFile;
+  Trans   : TransFile;
+  BtrOp,
+  KeyNum  : INTEGER;
+  Fund,
+  PosKey,
+  SecKey     : String;
+  SecurityPtr : CusipObjectPtr;
+  PositionPtr : CurrFileObjPtr;
+  err    : INTEGER;
+  Done   : BOOLEAN;
+  outfile : text;
+
+
+(* ---------------------------------------------- *)
+PROCEDURE OutPos(VAR f : TEXT);
+VAR
+  n, num, err : INTEGER;
+  temp : string;
+  Lotus : BOOLEAN;
+
+BEGIN
+{$IFDEF PARADOX}
+  Lotus := FALSE;
+{$ELSE}
+  Lotus := TRUE;
+{$ENDIF}
+
+  FOR n := 2 TO ParamCount DO
+  BEGIN
+     val(paramstr(n),num,err);
+     IF err = 0 THEN
+     BEGIN
+        { comma delimit fields after first one }
+        IF n > 2 THEN
+          write(f,',');
+        IF num < 50 THEN
+        BEGIN
+          temp := Cusip.OrdinalDelimField(num,Lotus);
+          write(f,temp:length(temp)+1)
+        END
+        ELSE BEGIN
+          temp := Trans.OrdinalDelimField(num,Lotus);
+          write(f,temp:length(temp)+1)
+        END;
+     END;
+  END;
+  writeln(f);
+END;
+
+
+(* ---------------------------------------------- *)
+BEGIN
+   IF paramcount < 1 THEN
+   BEGIN
+      Writeln;
+      Cusip.ShowOrdinalFields;
+      Writeln;
+      Trans.ShowOrdinalFields;
+      Writeln('TICKSUM <Fund> <Field [Field] ....>');
+      HALT;
+   END;
+
+   Assign(outfile,paramstr(1) + '.prn');
+   Rewrite(outfile);
+
+   Done := FALSE;
+
+
+   (* open *)
+
+   Fund := Capitalize(ParamStr(1));
+   PosKey := Fund;
+
+   { Open Files }
+   Trans.Init(ReadOnly,err);
+   IF err =  0 THEN
+   BEGIN
+      Cusip.Init(ReadOnly,err);
+      IF err > 0 THEN
+      BEGIN
+        Trans.Close;
+        HALT;
+      END;
+   END
+   ELSE
+     Halt;
+
+   { Determine if All Transs should be scanned or just one fund }
+   IF (pos('ALL',Fund) > 0) THEN
+   BEGIN
+     PositionPtr := Trans.RecordOp(PosKey,StepFirst,FundKey,err);
+     BtrOp := StepNext;
+   END
+   ELSE
+     BtrOp := GetGreater;
+
+
+   IF err = 0 THEN
+   REPEAT
+     PositionPtr := Trans.RecordOp(PosKey,BtrOp,FundKey,err);
+
+
+     { cash Transs have screwy record sizes that generate }
+     { BTRIEVE error #22.  It's not fatal so override it    }
+     IF err = 22 then err := 0;
+
+     IF NOT (
+          (err > 0)
+        OR
+          { if doing one fund confirm correct fund }
+          ((BtrOp=GetGreater) AND (copy(PosKey,1,4) <> copy(Fund,1,4)))
+        OR
+          (pos(AvoidAcct,PosKey)>0)
+           ) THEN
+     BEGIN
+         GotoXY(1,3);
+         Write(Trans.Trans.Fund.StrForm);
+         Write(Trans.Trans.Cusip.StrForm);
+         SecKey := Trans.Trans.Cusip.StrForm;
+(*
+         Write(copy(PosKey,1,22));
+         SecKey := copy(PosKey,13,9);
+*)
+         GotoXY(1,1);
+         {skip if cash }
+         IF (pos(SecKey,CashCusips) = 0) AND
+            NOT (Trans.Trans.Fund.StrForm = '') THEN
+         BEGIN
+           SecurityPtr := Cusip.RecordOp(SecKey,GetEqual,TransCusipKey,err);
+           IF err = 0 THEN
+              { write the record out to file }
+              OutPos(outfile);
+         END;
+     END
+     ELSE
+     BEGIN
+         IF err > 0 THEN Writeln('Btrieve error #',err);
+         Done := TRUE;
+     END;
+   UNTIL Done = TRUE;
+{   Writeln(outfile); }
+   Close(outfile);
+   Writeln;
+   Cusip.Close;
+   Trans.Close;
+end.
+

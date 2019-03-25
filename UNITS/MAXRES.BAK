@@ -1,0 +1,52 @@
+UNIT MAXRES;
+{ intitialize ATT Hi-Res graphic routines }
+
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+interface
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+
+uses
+   Graph;
+
+PROCEDURE InitATTGraph;   (* use for ATT *)
+FUNCTION  InitEGAMax : BOOLEAN;     (* EGA 16 color, 640 x 350 *)
+PROCEDURE InitNormGraph;  (* use for IBM, will emulate CGA on ATT *)
+
+
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+implementation
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+
+var GraphDriver, GraphMode : integer;
+
+PROCEDURE InitATTGraph;
+
+begin
+  GraphDriver := ATT400;
+  GraphMode   := ATT400HI;
+  InitGraph(GraphDriver,GraphMode,'');
+end;
+
+PROCEDURE InitNormGraph;
+
+begin
+  GraphDriver := Detect;
+  InitGraph(GraphDriver,GraphMode,'');
+end;
+
+FUNCTION InitEGAMax :BOOLEAN;
+begin
+  GraphDriver := EGA;
+  GraphMode   := EGAHi;
+  InitGraph(GraphDriver,GraphMode,'');
+  if GraphResult > 0 then
+  BEGIN
+    WriteLn(GraphErrorMsg(GraphResult));
+    InitEGAMax := FALSE;
+  END
+  ELSE
+     InitEGAMax := TRUE;
+end;
+
+begin
+end.

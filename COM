@@ -1,0 +1,51 @@
+
+ Volume in drive F is SYS        
+ Directory of  F:\TURBO\TP
+
+ARTY     PAS     9264   7-21-89   2:55p
+COM                 0   7-21-89   3:10p
+TURBO    TP      1226   7-21-89   3:04p
+UNPACK   COM    14716   5-02-89   5:50a
+TURBO    EXE   156321   5-02-89   5:50a
+README   COM     4217   5-02-89   5:50a
+TURBO    TPL    44352   5-02-89   5:50a
+TPC      EXE    61926   5-02-89   5:50a
+README          11550   5-02-89   5:50a
+TURBO    HLP   240493   5-02-89   5:50a
+TOUR     EXE    79065   5-02-89   5:50a
+TPTOUR1  CBT      993   5-02-89   5:50a
+TPTOUR2  CBT    97656   5-02-89   5:50a
+THELP    COM    28246   7-21-89   2:24p
+ARTY     BAK     9264   5-02-89   5:50a
+ATT      BGI     6269   5-02-89   5:50a
+BGIDEMO  PAS    39806   5-02-89   5:50a
+BGILINK  MAK      904   5-02-89   5:50a
+BGILINK  PAS     4483   5-02-89   5:50a
+CGA      BGI     6253   5-02-89   5:50a
+DRIVERS  PAS      760   5-02-89   5:50a
+EGAVGA   BGI     5363   5-02-89   5:50a
+FONTS    PAS      684   5-02-89   5:50a
+GOTH     CHR     8560   5-02-89   5:50a
+GRAPH    TPU    31584   5-02-89   5:50a
+HERC     BGI     6125   5-02-89   5:50a
+IBM8514  BGI     6665   5-02-89   5:50a
+LITT     CHR     2138   5-02-89   5:50a
+PC3270   BGI     6029   5-02-89   5:50a
+SANS     CHR     5438   5-02-89   5:50a
+TRIP     CHR     7241   5-02-89   5:50a
+TINSTXFR EXE    18106   5-02-89   5:50a
+BINOBJ   EXE    10220   5-02-89   5:50a
+GREP     COM     7029   5-02-89   5:50a
+MAKE     EXE    27174   5-02-89   5:50a
+TINST    EXE    68784   5-02-89   5:50a
+TOUCH    COM     5118   5-02-89   5:50a
+TPCONFIG EXE    14484   5-02-89   5:50a
+TPUMOVER EXE    33120   5-02-89   5:50a
+TPC      CFG       20   7-21-89   2:24p
+EXAMP        <DIR>      7-21-89   2:48p
+OOP          <DIR>      7-21-89   2:48p
+DOC          <DIR>      7-21-89   2:49p
+TURBO3       <DIR>      7-21-89   2:49p
+UNITS        <DIR>      7-21-89   2:50p
+PROGS        <DIR>      7-21-89   2:50p
+       46 File(s)  89206784 bytes free

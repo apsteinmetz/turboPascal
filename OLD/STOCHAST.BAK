@@ -1,0 +1,17 @@
+PROGRAM Stochast;
+
+{ Stochastic valuation of debt securites }
+uses StatLib0;
+
+const
+  Periods = 360;  { max periods of any security }
+
+TYPE
+  RatePath = ARRAY[0..Periods]
+
+PROCEDURE GenPath;
+{ generate a rate path without mean reversion }
+
+BEGIN
+   for n = 1 to Periods do
+

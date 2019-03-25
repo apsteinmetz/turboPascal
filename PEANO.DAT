@@ -1,0 +1,13 @@
+; Peano Curve
+; relative length of replaced segment
+4
+; turtle turn angles for generator
+0
+-90
+90
+90
+0
+-90
+-90
+90
+

@@ -1,0 +1,353 @@
+{$N+,E+}
+
+
+(* {$DEFINE DEBUG} *)
+
+uses CRT,   {CheckBreak}
+     Graph,
+     MathLib0, {Max, Min , ln10 }
+     JulStuf,    {Abort}
+     KeyCodes,  { GetKey, ESC }
+     BoundRgn;  { MarkHorizLine }
+
+CONST
+  X0 = 1.5;
+  y0 = 1.5;
+  ColorChanges = 32;
+  CheatFill = FALSE;
+
+VAR
+   XWidth, YWidth : INTEGER;
+
+   ScanLine, iter : WORD;
+
+   realC0, realCMax,
+   realCScale,
+   realC,imgC     : FLOAT;
+
+{ ---------------------------------------------------------------}
+PROCEDURE GetParams(VAR rC : FLOAT; VAR iC : FLOAT);
+VAR
+  code : INTEGER;
+
+BEGIN
+  val(paramstr(1),rC,code);
+  IF code > 0 THEN HALT;
+  val(paramstr(2),iC,code);
+  IF code > 0 THEN HALT;
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE DisplayHelp;
+BEGIN
+  Writeln('usage: FASTJULI Imaginary_C IterationsPerLine');
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE GetTowerParams(VAR iC : FLOAT;
+                         VAR iter      :WORD);
+VAR
+  code : INTEGER;
+
+BEGIN
+  if paramstr(1) = '?' THEN BEGIN
+      DisplayHelp;
+      Halt;
+  END;
+  val(paramstr(1),iC,code);
+  IF code > 0 THEN iC := 0.0;
+  val(paramstr(2),iter,code);
+  IF code > 0 THEN iter := 100;
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE OpenGraph(VAR XRes : INTEGER; VAR YRes : INTEGER);
+VAR
+   GraphDriver, GraphMode : INTEGER;
+
+Begin
+   GraphDriver := VGA   { ATT400 };
+   GraphMode   := 1;    { 2 page mode for VGA and EGA }
+   InitGraph(GraphDriver,GraphMode,'');
+   XRes := GetMaxX;
+   YRes := GetMaxY;
+end;
+
+{ ---------------------------------------------------------------}
+PROCEDURE SetColors;
+VAR
+  i : WORD;
+BEGIN
+  SetPalette(1 ,White);
+  SetPalette(2 ,LightRed);
+  SetPalette(3 ,LightMagenta);
+  SetPalette(4 ,Red);
+  SetPalette(5 ,Magenta);
+  SetPalette(6, DarkGray);
+  SetPalette(7 ,White);
+  SetPalette(7 ,LightCyan);
+  SetPalette(8 ,LightBlue);
+  SetPalette(9 ,Cyan);
+  SetPalette(10,Blue);
+  SetPalette(11, DarkGray);
+  SetPalette(12 ,White);
+  SetPalette(13,LightGreen);
+  SetPalette(14,Green);
+  SetPalette(15, DarkGray);
+
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE Julia(x,y,p,q : FLOAT; maxiter : WORD);
+(* x, y : initial values.  p, q : c = p + qi *)
+
+VAR
+   i       : WORD;
+   color,
+   m, n    : INTEGER;
+   XScale,
+   YScale,
+   wx, wy,
+   theta,
+   halfpi,
+   root    : FLOAT;
+
+BEGIN
+  color := 1;
+  Randomize;  { init random # generator }
+  XScale := XWidth/4;
+  YScale := YWidth/4;
+  wx := x;
+  wy := y;
+  halfpi := pi/2;
+  i := 0;
+  WHILE (i < maxiter) AND NOT Abort DO
+  BEGIN
+     wx := wx - p;
+     wy := wy - q;
+     IF wx > 0 THEN theta := arctan(wy/wx)
+      ELSE IF wx < 0 THEN theta := pi + arctan(wy/wx)
+        ELSE theta := halfpi; { wx := 0 }
+     theta := theta / 2;
+     root  := sqrt(wx*wx+wy*wy);
+     IF random < 0.5 THEN
+        root := sqrt(root)
+     ELSE
+        root := -sqrt(root);
+     wx := root * cos(theta);
+     wy := root * sin(theta);
+     m  := round( (2 + wx) *  XScale);
+     n  := round( (2 + wy) *  YScale);
+     PutPixel(m,n, color);
+     INC(i);
+  END; {WHILE}
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE JuliaTower(x0,y0,p,q : FLOAT; Line : WORD; maxiter : WORD);
+(* x, y : initial values.  p, q : c = p + qi *)
+
+CONST
+  MaxImgC = 2.0;
+  UseAbsolutes = FALSE;
+
+VAR
+   PixelColor,
+   i       : WORD;
+   x, y    : INTEGER;
+   RangePerColor,
+   XScale,
+   YScale,
+   wx, wy,
+   theta,
+   halfpi,
+   root    : FLOAT;
+
+BEGIN
+  Randomize;  { init random # generator }
+  RangePerColor := MaxImgC / ColorChanges;
+  i := GetMaxX;
+  { est. max range of set is -2 to 2, or 4 units }
+  { so there are Width /4 pixels per unit }
+
+  XScale := XWidth/4;
+  YScale := YWidth/4;
+
+  wx := x0;
+  wy := y0;
+  halfpi := pi/2;
+  i := 0;
+
+  WHILE (i < maxiter) AND NOT Abort DO
+  BEGIN
+     wx := wx - p;
+     wy := wy - q;
+     IF wx > 0 THEN theta := arctan(wy/wx)
+      ELSE IF wx < 0 THEN theta := pi + arctan(wy/wx)
+        ELSE theta := halfpi; { wx := 0 }
+     theta := theta / 2;
+     root  := sqrt(wx*wx+wy*wy);
+     IF random < 0.5 THEN
+        root := sqrt(root)
+     ELSE
+        root := -sqrt(root);
+     wx := root * cos(theta);
+     wy := root * sin(theta);
+     x  := round( (2 + wx) *  XScale);
+     IF UseAbsolutes THEN wy := ABS(wy);
+     IF (wy > 0) AND (wy < 2.0) THEN
+     BEGIN
+       { assign color based on distance from 2.0, real Y }
+       PixelColor := round(wy / RangePerColor) mod GetMaxColor + 1 ;
+       If GetPixel(x,Line) < PixelColor THEN
+           PutPixel(x,Line, PixelColor);
+     END;
+     INC(i);
+
+  END; {WHILE}
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE JuliaSlice(VAR YLine : INTEGER);
+(* sets YLine to -1 if users presses ESC to abort *)
+(* Draws single set using 10 times the iterations specified for *)
+(* each slice of the tower *)
+
+BEGIN
+    MarkHorizLine(YLine,1);
+    SetActivePage(1);
+    ClearViewPort;
+    SetVisualPage(1);
+    realC := realC0 + RealCScale * YLine;
+    Julia(X0,Y0,realC,imgC,iter*10);
+    (* pause, check for exit *)
+    IF GetKey = ESC THEN YLine := -1;
+    SetActivePage(0);
+    SetVisualPage(0);
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE FillInLine(Line : WORD);
+
+VAR
+   NewPixel,
+   LHPixel,
+   RHPixel,
+   i        : WORD;
+
+BEGIN
+  NewPixel := Black;
+  LHPixel  := Black;
+  RHPixel  := Black;
+  FOR i := 0 TO GetMaxX div 2 DO
+     IF (i mod 2) = 0 THEN
+     BEGIN
+         NewPixel := GetPixel(i,Line);
+         IF NewPixel = 0 THEN PutPixel(i,Line,LHPixel)
+             ELSE LHPixel := NewPixel;
+     END
+     ELSE
+     BEGIN
+         NewPixel := GetPixel(GetMaxX-i,Line);
+         IF NewPixel = 0 THEN PutPixel(GetMaxX-i,Line,RHPixel)
+             ELSE RHPixel := NewPixel;
+     END;
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE DrawGrid(X0,Y0, Xrange, Yrange : FLOAT;
+                   x1,y1,x2,y2 : WORD);
+CONST
+   ticks = 10;
+
+VAR
+  valstr : string;
+  Xscale, YScale : Float;
+  i,
+  Xdecimals, Ydecimals,
+  Xtick, Ytick : WORD;
+
+BEGIN
+  setcolor(LightRed);
+  Xdecimals := max(trunc(ln(Xrange) / ln10) * -1, 0) + 2;
+  Ydecimals := max(trunc(ln(Yrange) / ln10) * -1, 0) + 2;
+  IF x2 > GetMaxX then x2 := GetMaxX;
+  IF y2 > GetMaxY then y2 := GetMaxY;
+  Rectangle(x1,y1,x2,y2);
+  Xtick := round((x2-x1)/ticks);
+  Ytick := round((y2-y1)/ticks);
+  XScale := Xrange/ticks;
+  YScale := Yrange/ticks;
+  FOR i := 0 TO ticks DO
+  BEGIN
+     { do the X range }
+     str(X0+XScale*i:5:Xdecimals,valstr);
+     MoveTo(x1+Xtick*i,y1);
+     LineTo(x1+Xtick*i,y1+Ytick div 4);
+     IF i < ticks THEN OutText(valstr);
+     MoveTo(x1+Xtick*i,y2);
+     LineTo(x1+Xtick*i,y2-Ytick div 5);
+     IF i < ticks THEN OutText(valstr);
+     { do the Y range }
+     str(Y0+YScale*i:5:Ydecimals,valstr);
+     MoveTo(x1,y1+Ytick*i);
+     LineTo(x1+Xtick div 5,y1+Ytick*i);
+     IF i > 0 THEN OutText(valstr);
+     MoveTo(x2,y1+Ytick*i);
+     LineTo(x2-Xtick div 5,y1+Ytick*i);
+     { add another MoveTo to put us on left side of axis }
+     MoveTo(x2-45,y1+Ytick*i);
+     IF i > 0 THEN OutText(valstr);
+  END;
+END;
+
+{ ---------------------------------------------------------------}
+PROCEDURE Finish;
+VAR
+  StartLine : INTEGER;
+  aspect : FLOAT;
+
+BEGIN
+  aspect := XWidth/YWidth;
+  IF aspect > 1.0 THEN
+      DrawGrid(-2.0,-2.0,4.0 * aspect, 4.0, 0, 0, XWidth, YWidth)
+  ELSE
+      DrawGrid(-2.0,-2.0,4.0, 4.0/aspect, 0, 0, XWidth, YWidth);
+  IF GetKey <> ESC THEN
+  BEGIN
+    StartLine := GetMaxY DIV 2;
+    REPEAT JuliaSlice(StartLine) UNTIL StartLine < 0;
+  END;
+  CloseGraph;
+  Halt;
+END;
+
+{ ---------------------------------------------------------------}
+FUNCTION GetScale(max,min : FLOAT) : FLOAT;
+
+BEGIN
+  GetScale := ABS((max-min) / GetMaxY);
+END;
+
+{ ---------------------------------------------------------------}
+
+BEGIN
+{  CheckBreak := FALSE;}
+  realC0 := -2.0;
+  realCMax := 0.75;
+  imgC  := 1;
+  GetTowerParams(imgC,iter);
+  OpenGraph(XWidth,YWidth);
+  SetColors;
+{$IFDEF DEBUG}
+  RestoreCRTMode;
+{$ENDIF}
+  RealCScale := GetScale(realC0,realCMax);
+  FOR ScanLine := GetMaxY DOWNTO 0 DO
+  BEGIN
+    realC := realC0 + RealCScale * ScanLine;
+    JuliaTower(x0,y0,realC,imgC,ScanLine,iter);
+    IF CheatFill THEN FillInLine(ScanLine);
+  END;
+  Finish;
+END.

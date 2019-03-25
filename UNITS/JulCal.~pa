@@ -1,0 +1,163 @@
+{Julian (sense 1) date routines, handling both Julian (sense 2) and
+  Gregorian calendars}
+{Algorithm is valid from 4713 B.C. to 19,999 A.D.}
+{Error-free translation based on error-free PL/I source}
+{Based on Pascal code copyright 1985 by Michael A. Covington,
+   published in P.C. Tech Journal, December 1985, based on formulae
+   appearing in Astronomical Formulae for Calculators by Jean Meeus}
+{Reconversion to normal Julian epoch, integer arithmetic and 4000-year
+   correction by John W. Kennedy}
+{Historical exceptions _not_ allowed for in this package:
+   Until Julius Caesar established the Julian calendar in 45 B.C.,
+       calendars were irregular.
+     This package assumes the Julian calendar back to 4713 B.C.
+   The Julian calendar was altered in 8 B.C.  From 45 B.C. to 8 B.C.,
+       the months were
+       Jan=31, Feb=29(30), Mar=31, Apr=30, May=31, Jun=30,
+       Jul=31, Aug=30,     Sep=31, Oct=30, Nov=31, Dec=30
+     This package assumes the month lengths as we know them.
+   Leap years from 45 B.C. to 8 A.D. were miscalculated:
+       (45, 42, 39, 36, 33, 30, 27, 24, 21, 18, 15, 12, 9, then none
+         at all until 8 A.D.)
+     This package assumes leap years every four years, as they were
+       meant to have been.
+   January 1 was not always the first day of the year.  The United
+       Kingdom, in particular, started the year on March 25 until 1752.
+       (However, the year ended on December 31, leaving the days between
+       in limbo.)
+     This package assumes January 1 is the first day of the year.
+   Leap-year day was originally done by having February 24 (25 from 45
+     to 8 B.C.) twice.
+     This package assumes Leap-year day is February 29.}
+{"Transition" argument is the first Julian date to be considered as
+     belonging to the Gregorian calendar.  Usual values are:
+       2299161 = October 5/15, 1582, as in Rome, or
+       2361222 = September 3/14, 1752, as in the United Kingdom and the
+         Colonies}
+
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+Unit JULCAL;
+
+Interface
+Type
+  Year   = packed -4713..19999;
+  Month  = packed 1..12;
+  Day    = packed 1..31;
+
+  JCDateRec   = packed record
+    Y:   Year;
+    M:   Month;
+    D:   Day;
+  End;
+
+  Julian = 0..9026059;
+
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+  Function JULDNJ (YMD: JCDateRec; Transition: Julian): Julian;
+
+  Function JULDN (YMD: JCDateRec): Julian;
+  { simplest to use -date to serial day}
+
+  Function JULDND (YMD: JCDateRec; Transition: JCDateRec): Julian;
+
+  Procedure JULCDJ (J: Julian; Var R: JCDateRec; Transition: Julian);
+
+  Procedure JULCD (J:     Julian; Var R: JCDateRec);
+{simplest to use serial day to date}
+
+  Procedure JULCDD (J: Julian; Var R: JCDateRec; Transition: JCDateRec);
+
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+Implementation
+Type
+  Absolute_year = 3..24715;
+
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+  Function JULDNJ;
+  Type
+    Work_year =  -4714..19999;
+    Work_month = 3..14;
+    Work =       0..50000000;
+  Var
+    AY:          Work_year;
+    Y:           Absolute_year;
+    M:           Work_month;
+    D, G:        Julian;
+
+  Begin
+    AY := YMD . Y;
+    If AY < 0 then
+      Y := AY + 4717
+    Else
+      Y := AY + 4716;
+    If YMD.M < 3 then begin
+      M := Work (YMD.M) + 12;
+      Y := Y - 1;
+      AY := AY - 1
+    End
+    Else
+      M := Work (YMD.M);
+    D := (1461 * Work (Y)) shr 2 + (153 * (M + 1) div 5)
+         + Work (YMD.D) - 1524;
+    G := D + 2 - AY div 100 + AY div 400 - AY div 4000;
+    If G >= Transition then JULDNJ := G Else JULDNJ := D
+  End;
+
+  Function JULDN;
+  Begin
+    JULDN := JULDNJ (YMD, 2299161)
+  End;
+
+  Function JULDND;
+  Begin
+    JULDND := JULDNJ (YMD, JULDN (Transition))
+  End;
+
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+  Procedure JULCDJ;
+  Type
+    Work =       0..200000000;
+    Work_month = 4..15;
+  Var
+    YMD:         JCDateRec;
+    AA, AB, A:   Julian;
+    B, D, EE:    Work;
+    C:           Absolute_year;
+    E:           Work_month;
+    Y:           Year;
+  Begin
+    If J < Transition then {Julian Calendar}
+      A := Work (J)
+    Else {Gregorian Calendar} begin
+      AA := J - 1721120;
+      AB := 31 * (AA div 1460969); AA := AA mod 1460969;
+      AB := AB + 3 * (AA div 146097); AA := AA mod 146097;
+      If AA = 146096 then AB := AB + 3 Else AB := AB + AA div 36524;
+      A := J + (AB - 2)
+    End;
+    B := A + 1524;
+    C := (20 * B - 2442) div 7305;
+    D := 1461 * Work (C) shr 2;
+    EE := B - D;
+    E := 10000 * EE div 306001;
+    YMD . D := Day (EE - 306001 * E div 10000);
+    If E >= 14 then
+      YMD . M := Month (E - 13)
+    Else
+      YMD . M := Month (E - 1);
+    If YMD . M > 2 then Y := C - 4716 Else Y := C - 4715;
+    If Y < 1 then YMD . Y := Year (Y - 1) Else YMD . Y := Year (Y);
+    R := YMD
+  End;
+
+  Procedure JULCD;
+  Begin
+    JULCDJ (J, R, 2299161)
+  End;
+
+  Procedure JULCDD;
+  Begin
+    JULCDJ (J, R, JULDN (Transition))
+  End;
+End.
+

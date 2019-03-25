@@ -1,0 +1,153 @@
+ {_______________________________________________________________
+
+Fractal Landscape Generator
+
+Accompanies "Mimicking Mountains," by Tom Jeffery,
+BYTE, December 1987, page 337
+
+revised:
+8/22/88 by Art Steinmetz
+   Version for IBM Turbo Pascal v.4.0
+   Combines 3-D.pas, Map.pas
+   Uses more flexible 3-D plotting routines.  Sped up wireframe.
+   Added wireframe animate feature.
+______________________________________________________________
+}
+
+program FraclLand;
+{Wireframe or shaded representation of a fractal surface}
+
+(*
+{$DEFINE DEBUG}
+*)
+
+{$I FLOAT.INC}
+(* {$I TEXTMODE.INC }{ 40 COL flag } *)
+
+
+{$R+ Range checking }
+{$S+ Stack checking }
+
+
+ uses
+   Break,
+   Crt,       { ClrScr }
+   graph,
+   MathLib0,  { Float }
+   FracSurf,  { DoFractal, Surface }
+   FracStuf,  { ActionType, AltView, GetInput, OpenGraph }
+   TextDisp,
+   {$IFDEF TextMode}
+     GetField,
+   {$ELSE}
+     GRGetFld,
+   {$ENDIF}
+   ThreeD, { GetOrientation, WireFrame, Shaded, Animate, MapDisp }
+   Windows,
+   StopWtch ;
+
+VAR
+  srf : SurfaceRec;
+  col, row,
+  range, cont     : longint;
+  Prm             : InputParamRec;
+  PrmStr          : PrmStrArray;
+  GMode           : INTEGER;
+  Action          : ActionType;
+  MoreThanOnePage : BOOLEAN;
+
+
+{+++++++++++++++++++++++++++++++++++++++++++++++++++++++}
+(*
+PROCEDURE ReadFile( DataFile : String);
+
+BEGIN
+{ read data file
+ writeln('Reading data file.');
+ assign(srfile,DataFile);
+ reset(srfile);
+ for row := 0 to size do
+   for col := 0 to size do
+     read(srfile, srf[row, col]);
+ close(srfile);
+
+END;
+*)
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+PROCEDURE CalcFractal;
+VAR
+  done : BOOLEAN;
+  mp   : MessageRec;
+
+BEGIN
+   Message(mp,'Wait... Computing Fractal');
+   DoFractal(Srf.surfptr^,Prm.Dimension,Prm.Algorithm);
+   ClearMsg(mp);
+   done := ErrorMsg('Finished Computing Fractal');
+END;
+
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+PROCEDURE Display;
+
+BEGIN
+     GetOrientation(srf,Prm.tilt,Prm.rota);
+     StartWatch;
+{$IFDEF TextMode}
+     SetGraphMode(GMode);
+{$ENDIF}
+     IF MoreThanOnePage THEN
+     BEGIN
+        SetActivePage(1);
+        SetVisualPage(1);
+     END;
+     ClearViewPort;
+     CASE Prm.DisplayType OF
+       'M' : MapDisp(srf);
+       'W' : Wireframe(srf,1);
+       'S' : Shaded(srf,Prm.altitude,Prm.azimuth);
+       'A' : Animate(srf);
+     END;
+
+     IF NOT (Prm.DisplayType = 'A') THEN BEGIN
+       OutTextXY(1,1,'Hit any key to exit');
+       WaitForExit;
+     END;
+     IF MoreThanOnePage THEN BEGIN
+        SetActivePage(0);
+        SetVisualPage(0); END
+     ELSE BEGIN
+        Release_Fields;
+        SetupScreen;
+        InitFields(PrmStr);
+     END;
+END;
+
+{ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+
+BEGIN {MAIN}
+ OpenGraph(Gmode,MoreThanOnePage);
+
+{$IFDEF TextMode }
+  MoreThanOnePage := FALSE;
+{$ELSE}
+  SetGraphMode(GMode);
+{$ENDIF}
+InsertDefaults(PrmStr);
+ClearSurface(Srf);
+InitFields(PrmStr);
+REPEAT
+  Action := GetInput(Prm,PrmStr,Srf.surfptr^);
+  CASE Action OF
+      Compute    : CalcFractal;
+      SwapScreen : IF MoreThanOnePage THEN AltView
+                   ELSE
+                      MoreThanOnePage := ErrorMsg('Only One Visual Page');
+      Render     : Display;
+
+   END; {case}
+UNTIL Action = Quit;
+Release_Fields;
+CloseGraph;
+(* IF SaveOn THEN SaveImage('fractal.dat'); *)
+END. {FracLand}
+
